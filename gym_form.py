@@ -11,7 +11,7 @@ class GymForm(FlaskForm):
     contact = IntegerField('Contact Number', validators = [DataRequired()])
 
     # radio for choosing employee or student
-    emp_or_student = RadioField(' IIT Employee/IIT Student', choices = [('emp', 'IIT Employee'), ('student', 'IIT Student')])
+    emp_or_student = RadioField(' IIT Employee/IIT Student', choices = [('IIT Employee', 'IIT Employee'), ('IIT Student', 'IIT Student')])
 
     # if an employee
     emp_dept = StringField('Department')
@@ -23,7 +23,7 @@ class GymForm(FlaskForm):
     roll_num = StringField('Roll Number')
     student_dept = StringField('Department')
 
-    purpose = RadioField('Purpose of Joining', choices = [('fit', 'Fitness'), ('weight_lifting', 'Weight Lifting'), ('others', 'Others(Please specify)')])
+    purpose = RadioField('Purpose of Joining', choices = [('Fitness', 'Fitness'), ('Weight Lifting', 'Weight Lifting'), ('others', 'Others(Please specify)')])
     other_reason = StringField('Other Reason')
 
     submit = SubmitField('Submit')
