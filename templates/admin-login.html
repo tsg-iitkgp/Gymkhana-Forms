@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+     <!-- Bootstrap CSS -->
+     <link
+     rel="stylesheet"
+     href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+     integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+     crossorigin="anonymous"
+   />
+
+    <title>Gym FormAdmin Login</title>
+</head>
+<body>
+   <div class="content-section container">
+       <form method="POST" action="">
+            {{ form.hidden_tag() }}
+           <fieldset class="form-group">
+               <legend class="border-bottom mb-4">Admin Login</legend>
+            <div class="form-group">
+                {{ form.username.label(class="form-control-label") }}
+                {% if form.username.errors %}   
+                {{ form.username(class="form-control form-control-md is-invalid") }}
+                <div class="invalid-feedback">
+                {% for error in form.username.errors %}
+                    <span>{{ error }}</span>
+                {% endfor %}
+                </div>
+                {% else %}
+                {{ form.username(class="form-control form-control-md") }}
+            {% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.password.label(class="form-control-label") }}
+                {% if form.password.errors %}   
+                {{ form.password(class="form-control form-control-md is-invalid") }}
+                <div class="invalid-feedback">
+                {% for error in form.password.errors %}
+                    <span>{{ error }}</span>
+                {% endfor %}
+                </div>
+                {% else %}
+                {{ form.password(class="form-control form-control-md") }}
+            {% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-outline-info") }}
+            </div>
+            </fieldset>
+       </form>
+   </div> 
+</body>
+</html>
