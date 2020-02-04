@@ -1,84 +1,59 @@
-from flask import Flask, render_template, flash, url_for, request, redirect
-from gym_form import GymForm
-from admin_login import AdminLogin
-
-import pymongo
-from pymongo import MongoClient
-
-from flask_bcrypt import Bcrypt
-from flask_login import login_user, current_user, logout_user, login_required, LoginManager
-
-cluster = MongoClient("mongodb://gymk_db_user:gymk_db_user@cluster0-shard-00-00-fgvux.mongodb.net:27017,cluster0-shard-00-01-fgvux.mongodb.net:27017,cluster0-shard-00-02-fgvux.mongodb.net:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority")
-db = cluster['gymk']
-collection = db['gym_form']
+from flask import Flask, render_template, flash, url_for, request, redirect, jsonify
+import requests
+from flask_cors import CORS
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+from bs4 import BeautifulSoup as bs
+import getpass
+import re
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'temp_secret_key'
+CORS(app)
 
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'admin_login'
+ERP_HOMEPAGE_URL = 'https://erp.iitkgp.ac.in/IIT_ERP3/'
+ERP_LOGIN_URL = 'https://erp.iitkgp.ac.in/SSOAdministration/auth.htm'
+ERP_SECRET_QUESTION_URL = 'https://erp.iitkgp.ac.in/SSOAdministration/getSecurityQues.htm'
+
+headers = {
+    'timeout': '20',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
+}
 
 @app.route("/")
-@app.route("/", methods=['GET', 'POST'])
-def gym_form():
-    form = GymForm()
-    if form.validate_on_submit():
-        gymk_applicant = {}
-        gymk_applicant['name'] = request.form['name']
-        gymk_applicant['age_years'] = request.form['age_years']
-        gymk_applicant['age_months'] = request.form['age_months']
-        gymk_applicant['gender'] = request.form['gender']
-        gymk_applicant['supporting_name'] = request.form['supporting_name']
-        gymk_applicant['contact'] = request.form['contact']
-        gymk_applicant['emp_or_student'] = request.form['emp_or_student']
-        gymk_applicant['purpose'] = request.form['purpose']
-        gymk_applicant['other_reason'] = request.form['other_reason']
-       
-        iit_details = {}
-        if request.form['emp_or_student'] == 'IIT Employee':
-            iit_details['emp_dept'] = request.form['emp_dept']
-            iit_details['ec_no'] =request.form['ec_no']
-        else:
-            iit_details['hall'] = request.form['hall']
-            iit_details['room'] =request.form['room']
-            iit_details['roll_num'] = request.form['roll_num']
-            iit_details['student_dept'] =request.form['student_dept']
-        
-        gymk_applicant['iit_details'] = iit_details   
-        
-        print('applicant details ',gymk_applicant)
-        print('form success')
-        # flash('Request sent successfully, will be processed soon')
-        collection.insert_one(gymk_applicant)
-    else:
-        print('form failure')
-        # flash('Failed to submit a form')
-    return render_template('gym-form.html', form = form)
-
-@app.route("/admin", methods=['GET', 'POST'])
-def admin_login():
-    if current_user.is_authenticated:
-        return redirect(url_for('applications'))
-    form = AdminLogin()
+@app.route("/check", methods = ['POST'])
+def erp_cred_check():
+    print('in check ')
+    s = requests.Session()
+    r = s.get(ERP_HOMEPAGE_URL)
+    soup = bs(r.text, 'html.parser')
+    sessionToken = soup.find_all(id='sessionToken')[0].attrs['value']
+    login_details = {
+        'user_id': request.json['roll_no'],
+        'password': request.json['password'],
+        'answer': request.json['answer'],
+        'sessionToken': sessionToken,
+        'requestedUrl': 'https://erp.iitkgp.ac.in/IIT_ERP3',
+    }
+    r = s.post(ERP_LOGIN_URL, data=login_details,
+            headers = headers)
     
-    if form.validate_on_submit():
-        password_hash = bcrypt.generate_password_hash('password')
-        if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
-            return render_template('applications.html')
-        
-    return render_template('admin-login.html', form=form)
+    
+    try:
+        ssoToken = re.search(r'\?ssoToken=(.+)$',
+                     r.history[1].headers['Location']).group(1)
+        print('in try')
+    except IndexError:
+        print("Error: Please make sure the entered credentials are correct!")
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('admin'))
+@app.route("/que", methods=['POST'])
+def send_ques():
+    s = requests.Session()
+    r = s.get(ERP_HOMEPAGE_URL)
+    r = s.post(ERP_SECRET_QUESTION_URL, data={'user_id': request.json['roll_no']},
+            headers = headers)
+    secret_question = r.text
+    return jsonify(que = secret_question)
 
-@app.route("/applications")
-@login_required
-def applicatons():
-    return render_template('applications.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
