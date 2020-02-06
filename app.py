@@ -36,7 +36,7 @@ def erp_cred_check():
     }
     r = s.post(ERP_LOGIN_URL, data=login_details,
             headers = headers)
-    
+    # Based on response see whether credentials are correct or wrong
     
     try:
         ssoToken = re.search(r'\?ssoToken=(.+)$',
@@ -51,6 +51,8 @@ def send_ques():
     r = s.get(ERP_HOMEPAGE_URL)
     r = s.post(ERP_SECRET_QUESTION_URL, data={'user_id': request.json['roll_no']},
             headers = headers)
+    if (r.text == 'FALSE'): 
+        return jsonify(que='Invalid Roll Number')
     secret_question = r.text
     return jsonify(que = secret_question)
 
