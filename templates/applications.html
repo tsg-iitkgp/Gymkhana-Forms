@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='table.css') }}">
     <title>Gym Form Applications</title>
 </head>
 <body>
@@ -11,5 +12,23 @@
     <a href="{{ url_for('logout') }}">
             Logout
     </a>
+    <table style="width:100%">
+	  <tr>
+	    <th>Roll Number</th>
+	    <th>Name</th>
+	    <th>Dates</th>
+	  </tr>
+	  <tr>
+	    <td>18AB2002</td>
+	    <td>Smith</td>
+	    <td>1,2</td>
+	  </tr>
+	  <tr>
+	    <td>18JJ999</td>
+	    <td>Jackson</td>
+	    <td>9,4</td>
+	  </tr>
+	</table> 
+	<button>Import</button>
 </body>
 </html>
