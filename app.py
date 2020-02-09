@@ -6,7 +6,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from bs4 import BeautifulSoup as bs
 import getpass
 import re
-
+from flask_csv import send_csv
 from admin_login import AdminLogin
 from flask_bcrypt import Bcrypt
 from flask_login import login_user, current_user, logout_user, login_required, LoginManager
@@ -97,10 +97,18 @@ def logout():
     logout_user()
     return redirect(url_for('admin'))
 
-@app.route("/applications")
+@app.route("/applications", methods=['GET', 'POST'])
 @login_required
 def applicatons():
-    return render_template('applications.html')
+    # TODO read from database
+    table_data_from_databade = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3'}]
+    if method.request == "GET":
+        print(' in get')
+        return render_template('applications.html', table = table_data_from_databade)
+    if method.request == 'POST':
+        print(' in posr')
+        return send_csv(table_data_from_databade)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
