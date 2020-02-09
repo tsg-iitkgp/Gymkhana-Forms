@@ -18,7 +18,7 @@
 	    <th>Name</th>
 	    <th>Dates</th>
 	  </tr>
-	  <tr>
+	 <!--  <tr>
 	    <td>18AB2002</td>
 	    <td>Smith</td>
 	    <td>1,2</td>
@@ -27,7 +27,15 @@
 	    <td>18JJ999</td>
 	    <td>Jackson</td>
 	    <td>9,4</td>
+	  </tr> -->
+	  {% for i in table %}
+	  <tr>
+	  	<td>{{ i['roll'] }}</td>
+	  	<td>{{ i['name'] }}</td>
+	  	<td>{{ i['dates'] }}</td>
 	  </tr>
+		
+		{% endfor %}
 	</table> 
 	<form action='applications' method="POST">
 		<button>Import</button>
