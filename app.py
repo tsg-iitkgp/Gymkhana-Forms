@@ -7,12 +7,24 @@ from bs4 import BeautifulSoup as bs
 import getpass
 import re
 
+from admin_login import AdminLogin
+from flask_bcrypt import Bcrypt
+from flask_login import login_user, current_user, logout_user, login_required, LoginManager
+
+
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'SECRET_KEY'
+
 CORS(app)
 
 ERP_HOMEPAGE_URL = 'https://erp.iitkgp.ac.in/IIT_ERP3/'
 ERP_LOGIN_URL = 'https://erp.iitkgp.ac.in/SSOAdministration/auth.htm'
 ERP_SECRET_QUESTION_URL = 'https://erp.iitkgp.ac.in/SSOAdministration/getSecurityQues.htm'
+
+bcrypt = Bcrypt(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin_login'
+
 
 headers = {
     'timeout': '20',
@@ -37,7 +49,17 @@ def erp_cred_check():
     r = s.post(ERP_LOGIN_URL, data=login_details,
             headers = headers)
     # Based on response see whether credentials are correct or wrong
-    
+    print(' req.get_json is ', request.json)
+    '''
+    This needs to be added in the database
+    request.json =  {'roll_no': '18MA20034', 'password': 'password', 'answer': 'answer', 'days': ['1', '3']}
+    '''
+   
+    # TODO 
+    # 1. verify if the user erp credentials are correct or not
+    # if correct - Add details in database
+    # else - Give warning
+
     try:
         ssoToken = re.search(r'\?ssoToken=(.+)$',
                      r.history[1].headers['Location']).group(1)
@@ -56,6 +78,29 @@ def send_ques():
     secret_question = r.text
     return jsonify(que = secret_question)
 
+@app.route("/admin", methods=['GET', 'POST'])
+def admin_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('applications'))
+    form = AdminLogin()
+
+    if form.validate_on_submit():
+        password_hash = bcrypt.generate_password_hash('password')
+        if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
+            return render_template('applications.html')
+
+    return render_template('admin-login.html', form=form)
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('admin'))
+
+@app.route("/applications")
+@login_required
+def applicatons():
+    return render_template('applications.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
