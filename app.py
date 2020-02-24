@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, url_for, request, redirect, jsonify
+from flask import Flask, render_template, flash, url_for, request, redirect, jsonify, session
 import requests
 from flask_cors import CORS
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -48,14 +48,18 @@ def erp_cred_check():
     }
     r = s.post(ERP_LOGIN_URL, data=login_details,
             headers = headers)
-    # Based on response see whether credentials are correct or wrong
     print(' req.get_json is ', request.json)
     '''
-    This needs to be added in the database
     request.json =  {'roll_no': '18MA20034', 'password': 'password', 'answer': 'answer', 'days': ['1', '3']}
     '''
    
-    # TODO 
+    # TODO Shivam needs to see whether erp creds are right are wrong
+    
+    # TODO if error 
+    # return jsonify(que='Invalid Credentials')
+    
+    # TODO if correct Write to Database and send success message else send failuue
+
     # 1. verify if the user erp credentials are correct or not
     # if correct - Add details in database
     # else - Give warning
@@ -86,9 +90,24 @@ def admin_login():
 
     if form.validate_on_submit():
         password_hash = bcrypt.generate_password_hash('password')
-        if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
-            return render_template('applications.html')
+        # TODO 
+        '''
+        based on username and password, read from database
+        - hall name
+        - list of students
+        '''
+        
+        hall = 'MT'
+        table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Y'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'N'}]
 
+        #Storing hall name in session for future usage
+        session['hall'] = hall
+        
+        
+        if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
+            return render_template('applications.html', table = table_data_from_database, hall=hall)
+        else:
+            flash('Credentials are wrong')
     return render_template('admin-login.html', form=form)
 
 @app.route("/logout")
@@ -97,17 +116,31 @@ def logout():
     logout_user()
     return redirect(url_for('admin'))
 
-@app.route("/applications", methods=['GET', 'POST'])
-@login_required
-def applicatons():
-    # TODO read from database
-    table_data_from_databade = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3'}]
-    if method.request == "GET":
-        print(' in get')
-        return render_template('applications.html', table = table_data_from_databade)
-    if method.request == 'POST':
-        print(' in posr')
-        return send_csv(table_data_from_databade)
+
+@app.route('/get_csv', methods = ['POST'])
+def get_csv():
+    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3'}]
+    headers = ['roll', 'name', 'dates']
+    filename = 'hall_name_students.csv'
+    return send_csv(table_data_from_database, filename, headers)
+
+
+@app.route('/approve', methods = ['POST'])
+def approve():
+    print('here in single approve')
+    print(request.json)
+    # TODO with the roll number obtained change N -> Y of single row 
+    # Send the page again by reading the table from DB again
+    hall = session['hall']
+    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
+    return render_template('applications.html', table = table_data_from_database, hall=hall)
+
+@app.route('/approve_all', methods = ['POST'])
+def approve_all():
+    # TODO change in database the status of all N -> Y using session['hall']
+    hall = session['hall']
+    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yes'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
+    return render_template('applications.html', table = table_data_from_database, hall=hall)
 
 
 if __name__ == '__main__':

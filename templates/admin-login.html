@@ -15,6 +15,15 @@
     <title>Gym FormAdmin Login</title>
 </head>
 <body>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <ul class=flashes>
+          {% for message in messages %}
+            <li><h2>{{ message }}</h2></li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
    <div class="content-section container">
        <form method="POST" action="">
             {{ form.hidden_tag() }}

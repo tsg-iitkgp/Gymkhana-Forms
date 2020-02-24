@@ -8,29 +8,52 @@
     <title>Gym Form Applications</title>
 </head>
 <body>
-    <h1>Here 2 different tables will come</h1>
+    <h1>Hall: {{ hall }}</h1>
     <a href="{{ url_for('logout') }}">
             Logout
-    </a>
-    <table style="width:100%">
-	  <tr>
-	    <th>Roll Number</th>
-	    <th>Name</th>
-	    <th>Dates</th>
-	  </tr>
-	  <tr>
-	    <td>18AB2002</td>
-	    <td>Smith</td>
-	    <td>1,2</td>
-	  </tr>
-	  <tr>
-	    <td>18JJ999</td>
-	    <td>Jackson</td>
-	    <td>9,4</td>
-	  </tr>
-	</table> 
-	<form action='applications' method="POST">
-		<button>Import</button>
+	</a>
+	<form action='get_csv' method="POST">
+			<button>Import</button>
 	</form>
+	<form action='approve_all' method="POST">
+			<button>Approve all</button>
+	</form>
+    <table style="width:100%">
+	   <tr>
+		<th>Roll Number</th>
+		<th>Name</th>
+		<th>Dates</th>
+		<th>Approved Status</th>
+		<th>Approve</th>
+	  </tr>
+	  {% for row in table %}
+	 	<tr>
+			 <td>{{ row['roll'] }}</td>
+			 <td>{{ row['name'] }}</td>
+			 <td>{{ row['dates'] }}</td>
+			 <td>{{ row['approved_status'] }}</td>
+			 <td><button onclick="handle(this.id)" id={{ row['roll'] }} >Approve</button></td>
+		 </tr> 
+	  {% endfor %}
+	</table> 
+	
+	{% block javascript %}
+	<script>
+		async function handle(roll) {
+			console.log('e ', roll)
+			const response = await fetch('http://8f5ca4e9.ngrok.io/approve',{
+								method: 'POST',
+								mode: 'cors',
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json'
+								},
+								body: JSON.stringify({ roll })
+
+							})
+
+		}
+	</script>
+	{% endblock %}
 </body>
 </html>
