@@ -41,12 +41,13 @@
 	<script>
 		async function handle(roll) {
 			console.log('e ', roll)
-			const response = await fetch('http://8f5ca4e9.ngrok.io/approve',{
+			const response = await fetch('http://1f405bf6.ngrok.io/approve',{
 								method: 'POST',
 								mode: 'cors',
 								headers: {
 									'Accept': 'application/json',
-									'Content-Type': 'application/json'
+									'Content-Type': 'application/json',
+									'Access-Control-Allow-Origin': '*'
 								},
 								body: JSON.stringify({ roll })
 
