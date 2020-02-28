@@ -11,7 +11,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import login_user, current_user, logout_user, login_required, LoginManager
 import dill as pickle
 import datetime
-import mysql.connector as mysql
+import mysql.connector
 import os
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -33,9 +33,10 @@ user = os.getenv("MYSQL_USER")
 password = os.getenv("MYSQL_PASSWORD")
 database = os.getenv("MYSQL_DB")
 
-db = mysql.connnect(host=host, user=user, passwd=password, database=database)
+db = mysql.connector.connect(host=host, user=user, passwd=password, database=database)
 
-monthList = {1:"january", 2:"february", 3:"march", 4:"april", 5:"may", 6:"june    ", 7:"july", 8:"august", 9:"september", 10:"october", 11:"november", 12:"december"}
+monthList = {1:"january", 2:"february", 3:"march", 4:"april", 5:"may", 6:"june", 7:"july", 8:"august", 9:"september", 10:"october", 11:"november", 12:"december"}
+dayList = {0:"monday", 1:"tuesday", 2:"wednesday", 3:"thursday", 4:"friday", 5:"saturday", 6:"sunday"}
 
 cursor = db.cursor()
 
@@ -88,10 +89,34 @@ def erp_cred_check():
     days = request.json['days']
     days_int = [int(day) for day in days]
 
+    baseQuery = "INSERT INTO {} ({}, ".format(requests, request.json['roll_no'])
+    nDays = len(days)
+
     # check if atleast one is not in range of 0 to 6
     for day in days_int:
         if day < 0 or day > 6:
             return jsonify(message="Please send properly")
+    
+    chosenDays = ""
+    for day in days:
+        x = dayList[day]
+        chosenDays = chosenDays + x +","
+      
+    chosenDays += ") VALUES ("
+    for i in range(0, nDays + 1):
+        chosenDays += "%s,"
+       
+    chosenDays += ")"
+    sql = baseQuery + chosenDays
+    val = [request.json['roll_no']]
+    for day in days:
+        val.append("Y")
+        
+    val = tuple(val)
+    cursor.execute(sql, val)
+    db.commit()
+    print("Added to DB successfully")
+    return jsonify(message="success")
 
     # TODO Shivam needs to see whether erp creds are right are wrong
     
@@ -148,6 +173,8 @@ def admin_login():
         - list of students
         '''
         
+        hall = "MTH"
+        table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Y'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'N'}]
         #Storing hall name in session for future usage
         session['hall'] = hall
         
@@ -165,10 +192,11 @@ def logout():
 
 
 @app.route('/get_csv', methods = ['POST'])
-@login_required
+#@login_required
 def get_csv():
     month = monthList[datetime.datetime.now().month]
     hall = session['hall']
+    month = "march"
     print("Getting Data for Hall {}".format(hall+"_"+month))
     sqlQuery = "SELECT * FROM {}".format(hall+"_"+month)
     cursor.execute(sqlQuery)
@@ -177,9 +205,9 @@ def get_csv():
     for row in cursor:
         table_data_from_database.append(dict(zip(columns, row)))
 
-    CSVheaders = ['roll_number', 'name']
+    CSVheaders = ['roll_number', 'name', 'email', 'hall']
     for i in range(1, 31):
-        date = i + "-" + month
+        date = str(i) + "-" + month
         CSVheaders.append(date)
 
     filename = '{}_students.csv'.format(hall+"_"+month)
@@ -192,7 +220,7 @@ def approve():
     print(request.json)
     # TODO with the roll number obtained change N -> Y of single row 
     # Send the page again by reading the table from DB again
-    
+        
     hall = session['hall']
 
     #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
@@ -204,8 +232,6 @@ def approve_all():
     hall = session['hall']
     table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yes'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
     return render_template('applications.html', table = table_data_from_database, hall=hall)
-
-
 
 
 if __name__ == '__main__':
