@@ -59,15 +59,13 @@ def erp_cred_check():
         return jsonify(message="error in login")
     
     try:
-        print('herei n s2nd try')
         ssoToken = re.search(r'\?ssoToken=(.+)$', r.history[1].headers['Location']).group(1)
         return jsonify(message='success')
     except IndexError:
         print('Wrong Credentials')
-        return jsonify(message="error in login")
+        return jsonify(message="wrong creds")
     
-    # improve by telling wrong creds or backend fault    
-
+    
     
     # print(' req.get_json is ', request.json)
     '''
@@ -81,11 +79,6 @@ def erp_cred_check():
         if day < 0 or day > 6:
             return jsonify(message="Please send properly")
 
-    # TODO Shivam needs to see whether erp creds are right are wrong
-    
-    # TODO if error 
-    # return jsonify(que='Invalid Credentials')
-    
     # TODO if correct Write to Database and send success message else send failuue
 
     # 1. verify if the user erp credentials are correct or not
