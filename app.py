@@ -2,7 +2,6 @@ from flask import Flask, render_template, flash, url_for, request, redirect, jso
 import requests
 from flask_cors import CORS
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from bs4 import BeautifulSoup as bs
 import getpass
 import re
@@ -12,7 +11,10 @@ from flask_bcrypt import Bcrypt
 from flask_login import login_user, current_user, logout_user, login_required, LoginManager
 import dill as pickle
 import datetime
+import mysql.connector as mysql
+import os
 
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'SECRET_KEY'
 
@@ -26,6 +28,16 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
+host = os.getenv("MYSQL_HOST")
+user = os.getenv("MYSQL_USER")
+password = os.getenv("MYSQL_PASSWORD")
+database = os.getenv("MYSQL_DB")
+
+db = mysql.connnect(host=host, user=user, passwd=password, database=database)
+
+monthList = {1:"january", 2:"february", 3:"march", 4:"april", 5:"may", 6:"june    ", 7:"july", 8:"august", 9:"september", 10:"october", 11:"november", 12:"december"}
+
+cursor = db.cursor()
 
 headers = {
     'timeout': '20',
@@ -136,12 +148,8 @@ def admin_login():
         - list of students
         '''
         
-        hall = 'MT'
-        table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Y'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'N'}]
-
         #Storing hall name in session for future usage
         session['hall'] = hall
-        
         
         if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
             return render_template('applications.html', table = table_data_from_database, hall=hall)
@@ -157,11 +165,25 @@ def logout():
 
 
 @app.route('/get_csv', methods = ['POST'])
+@login_required
 def get_csv():
-    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3'}]
-    headers = ['roll', 'name', 'dates']
-    filename = 'hall_name_students.csv'
-    return send_csv(table_data_from_database, filename, headers)
+    month = monthList[datetime.datetime.now().month]
+    hall = session['hall']
+    print("Getting Data for Hall {}".format(hall+"_"+month))
+    sqlQuery = "SELECT * FROM {}".format(hall+"_"+month)
+    cursor.execute(sqlQuery)
+    columns = tuple([d[0] for d in cursor.description])
+    table_data_from_database = []
+    for row in cursor:
+        table_data_from_database.append(dict(zip(columns, row)))
+
+    CSVheaders = ['roll_number', 'name']
+    for i in range(1, 31):
+        date = i + "-" + month
+        CSVheaders.append(date)
+
+    filename = '{}_students.csv'.format(hall+"_"+month)
+    return send_csv(table_data_from_database, filename, CSVheaders)
 
 
 @app.route('/approve', methods = ['POST'])
@@ -170,8 +192,10 @@ def approve():
     print(request.json)
     # TODO with the roll number obtained change N -> Y of single row 
     # Send the page again by reading the table from DB again
+    
     hall = session['hall']
-    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
+
+    #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
     return render_template('applications.html', table = table_data_from_database, hall=hall)
 
 @app.route('/approve_all', methods = ['POST'])
