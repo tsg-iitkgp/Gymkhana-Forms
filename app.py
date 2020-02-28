@@ -72,8 +72,7 @@ def erp_cred_check():
         return jsonify(message="error in login")
     
     try:
-        ssoToken = re.search(r'\?ssoToken=(.+)$', r.history[1].headers['Location']).group(1)
-        return jsonify(message='success')
+        ssoToken = re.search(r'\?ssoToken=(.+)$', r.history[1].headers['Location']).group(1) 
     except IndexError:
         print('Wrong Credentials')
         return jsonify(message="wrong creds")
@@ -86,35 +85,47 @@ def erp_cred_check():
     '''
     days = request.json['days']
     days_int = [int(day) for day in days]
-
-    baseQuery = "INSERT INTO {} ({}, ".format(requests, request.json['roll_no'])
-    nDays = len(days)
-
-    # check if atleast one is not in range of 0 to 6
-    for day in days_int:
-        if day < 0 or day > 6:
-            return jsonify(message="Please send properly")
-    
-    chosenDays = ""
-    for day in days:
-        x = dayList[day]
-        chosenDays = chosenDays + x +","
-      
-    chosenDays += ") VALUES ("
-    for i in range(0, nDays + 1):
-        chosenDays += "%s,"
-       
-    chosenDays += ")"
-    sql = baseQuery + chosenDays
-    val = [request.json['roll_no']]
-    for day in days:
-        val.append("Y")
+    try:
+        baseQuery = "INSERT INTO {} ({}, ".format("requests","roll_number")
+        nDays = len(days)
+        print("YAAAAY")
+        print(baseQuery + str(nDays))
+        print("HFHf")
+        # check if atleast one is not in range of 0 to 6
+        for day in days_int:
+            if day < 0 or day > 6:
+                return jsonify(message="Please send properly")
         
-    val = tuple(val)
-    cursor.execute(sql, val)
-    db.commit()
-    print("Added to DB successfully")
-    return jsonify(message="success")
+        chosenDays = ""
+        print(chosenDays)
+        print("hjdfd ")
+        for day in days_int: 
+            x = dayList[day]
+            print("X:  " + x)
+            chosenDays = chosenDays + x +","
+          
+        chosenDays = chosenDays[0:-1]
+        chosenDays += ") VALUES ("
+        for i in range(0, nDays + 1):
+            chosenDays += "%s,"
+        chosenDays = chosenDays[0:-1]
+        print(chosenDays)
+        chosenDays += ")"
+        sql = baseQuery + chosenDays
+        val = [request.json['roll_no']]
+        print("SQL: "+ sql)
+        for day in days:
+            val.append("Y")
+            
+        val = tuple(val)
+        cursor.execute(sql, val)
+        db.commit()
+        print("Added to DB successfully")
+        return jsonify(message="success")
+    
+    except Exception as e:
+        print("Exception: {}".format(e))
+        return jsonify(message="DB Error")
 
     # TODO if correct Write to Database and send success message else send failuue
 
@@ -167,6 +178,7 @@ def admin_login():
         '''
         
         hall = "MTH"
+
         table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Y'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'N'}]
         #Storing hall name in session for future usage
         session['hall'] = hall
