@@ -13,6 +13,10 @@ import dill as pickle
 import datetime
 import mysql.connector
 import os
+from dotenv import load_dotenv
+from mail import async_send_mail
+
+load_dotenv()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 app = Flask(__name__)
@@ -45,6 +49,29 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
 }
 
+
+def checkDateInput(from_date, to_date):
+    from_date_object = datetime.datetime.strptime(from_date,'%Y-%m-%d')
+    to_date_object = datetime.datetime.strptime(to_date, '%Y-%m-%d')
+
+    today = datetime.datetime.now()
+
+    startDiff = from_date_object - today
+    startDiff = startDiff.days
+
+    if startDiff < 2:
+        return 1
+
+    dayDiff = to_date_object - from_date_object
+    dayDiff = dayDiff.days
+
+    if dayDiff < 3:
+        return -1
+
+    return 0
+
+
+
 @app.route("/", methods=['GET'])
 def go_to_adminpage():
     return redirect(url_for('admin_login'))
@@ -52,11 +79,11 @@ def go_to_adminpage():
 @app.route("/check", methods = ['POST'])
 def erp_cred_check():
     print('in check ')
-    roll_no = request.json['roll_no']
+    roll_no = request.json['roll_number']
     with open(roll_no, 'rb') as f:
         s = pickle.load(f)
     login_details = {
-        'user_id': request.json['roll_no'],
+        'user_id': request.json['roll_number'],
         'password': request.json['password'],
         'answer': request.json['answer'],
         'requestedUrl': 'https://erp.iitkgp.ac.in/IIT_ERP3',
@@ -83,41 +110,26 @@ def erp_cred_check():
     '''
     request.json =  {'roll_no': '18MA20034', 'password': 'password', 'answer': 'answer', 'days': ['1', '3']}
     '''
-    days = request.json['days']
-    days_int = [int(day) for day in days]
+#    days = request.json['days']
+   # days_int = [int(day) for day in days]
     try:
-        baseQuery = "INSERT INTO {} ({}, ".format("requests","roll_number")
-        nDays = len(days)
-        print("YAAAAY")
-        print(baseQuery + str(nDays))
-        print("HFHf")
-        # check if atleast one is not in range of 0 to 6
-        for day in days_int:
-            if day < 0 or day > 6:
-                return jsonify(message="Please send properly")
-        
-        chosenDays = ""
-        print(chosenDays)
-        print("hjdfd ")
-        for day in days_int: 
-            x = dayList[day]
-            print("X:  " + x)
-            chosenDays = chosenDays + x +","
-          
-        chosenDays = chosenDays[0:-1]
-        chosenDays += ") VALUES ("
-        for i in range(0, nDays + 1):
-            chosenDays += "%s,"
-        chosenDays = chosenDays[0:-1]
-        print(chosenDays)
-        chosenDays += ")"
-        sql = baseQuery + chosenDays
-        val = [request.json['roll_no']]
-        print("SQL: "+ sql)
-        for day in days:
-            val.append("Y")
-            
-        val = tuple(val)
+        roll_number = request.json['roll_number']
+        from_date = request.json['from']
+        to_date = request.json['to']
+        if checkDateInput(from_date, to_date) == 1:
+            return jsonify(message="Choose a from date atleast 2 days away")
+
+        if checkDateInput(from_date, to_date) == -1:
+            return jsonify(message="The rebate period must be atleast 5 days long")
+
+        cursor.execute("SELECT name, hall FROM students WHERE roll_number = '{}'".format(roll_number))
+        x = cursor.fetchall()[0]
+        name = x[0]
+        hall = x[1]
+        timestamp = datetime.datetime.now()
+        sql = "INSERT INTO `requests` (`timestamp`,`roll_number`, `name`, `from_date`, `to_date`) VALUES"
+        values = [timestamp, roll_number, name, from_date, to_date]
+        val = tuple(values)
         cursor.execute(sql, val)
         db.commit()
         print("Added to DB successfully")
@@ -132,8 +144,7 @@ def erp_cred_check():
     # 1. verify if the user erp credentials are correct or not
     # if correct - Add details in database
     # else - Give warning
-
-
+    return jsonify(message="success")
 
 
 @app.route("/que", methods=['POST'])
@@ -144,7 +155,7 @@ def send_ques():
     s = requests.Session()
     r = s.get(ERP_HOMEPAGE_URL)
 
-    roll_no = request.json['roll_no']
+    roll_no = request.json['roll_number']
     r = s.post(ERP_SECRET_QUESTION_URL, data={'user_id': roll_no},
             headers = headers)
     secret_question = r.text
@@ -169,20 +180,48 @@ def admin_login():
     form = AdminLogin()
 
     if form.validate_on_submit():
-        password_hash = bcrypt.generate_password_hash('password')
         # TODO 
         '''
         based on username and password, read from database
         - hall name
         - list of students
         '''
-        
-        hall = "MTH"
+    
+        hall = request.form['username']
+        hall = "LBS"
 
-        table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Y'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'N'}]
-        #Storing hall name in session for future usage
         session['hall'] = hall
+
+        sqlQuery = "SELECT * FROM requests INNER JOIN students ON requests.roll_number = students.roll_number WHERE hall = '{}' ORDER BY requests.timestamp DESC".format(hall)
+        cursor.execute(sqlQuery)
+        approvalList = cursor.fetchall()
         
+        approvals = []
+
+        for row in results:
+            approval =  {}
+            approvalID = row[0]
+            timestamp = row[1]
+            roll_number = row[2]
+            from_date = row[3]
+            to_date = row[4]
+            approval_status = row[5]
+
+            if checkDateInput(from_date, to_date) == 1:
+                return jsonify(message="Choose a from date atleast 2 days away")
+
+            if checkDateInput(from_date, to_date) == -1:
+                return jsonify(message="The rebate period must be atleast 5 days long")
+
+            studRow["id"] = approvalID
+            studRow["timestamp"] = timestamp
+            studRow["roll_number"] = roll_number
+            studRow["from_date"] = from_date
+            studRow["to_date"] = to_date
+            studRow["approval_status"] = approval_status
+            approvals.append(studRow)
+
+         
         if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
             return render_template('applications.html', table = table_data_from_database, hall=hall)
         else:
@@ -197,20 +236,21 @@ def logout():
 
 
 @app.route('/get_csv', methods = ['POST'])
-#@login_required
+@login_required
 def get_csv():
     month = monthList[datetime.datetime.now().month]
     hall = session['hall']
-    month = "march"
-    print("Getting Data for Hall {}".format(hall+"_"+month))
-    sqlQuery = "SELECT * FROM {}".format(hall+"_"+month)
+    #month = "march"
+    
+    sqlQuery = "SELECT * FROM requests INNER JOIN students ON requests.roll_number = students.roll_number WHERE hall = '{}'".format(hall)
     cursor.execute(sqlQuery)
-    columns = tuple([d[0] for d in cursor.description])
+    results = cursor.fetchall()
+    columns = tuple('id','timestamp','roll_number', 'name', 'email', 'hall', 'from_date', 'to_date')
     table_data_from_database = []
-    for row in cursor:
+    for row in results:
         table_data_from_database.append(dict(zip(columns, row)))
 
-    CSVheaders = ['roll_number', 'name', 'email', 'hall']
+    CSVheaders = list(columns)
     for i in range(1, 31):
         date = str(i) + "-" + month
         CSVheaders.append(date)
@@ -223,20 +263,47 @@ def get_csv():
 def approve():
     print('here in single approve')
     print(request.json)
+    cursor.execute("SELECT * FROM requests WHERE requests.roll_number = {} ".format(request.json['roll']))
+    stud = cursor.fetchone()
+    
     # TODO with the roll number obtained change N -> Y of single row 
     # Send the page again by reading the table from DB again
-        
+           
     hall = session['hall']
+
+    stud = list(stud)
+    days = stud[1:8]
+
+    currentDay = datetime.datetime.now().weekday()
+    currentMonth = datetime.datetime.now().month
+    #currentMonth = "march"
+
+    currentDate = datetime.datetime.now().day
+
+    baseQuery = "UPDATE {} SET".format(hall+"_"+month)
+    dayQuery = ""
+    for i in range(0, len(days)):
+        if days[i] == "Y":
+            day = currentDate + i + 1
+            if day >= 30:
+                day -= 30
+                currentMonth += 1
+            colName = day + "-" + monthList[currentMonth]
+            dayQuery +=  "{} = 'Y',".format(colName)
+    
+    dayQuery = dayQuery[0:-1]
+    end = "WHERE roll_number = "
+
 
     #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
     return render_template('applications.html', table = table_data_from_database, hall=hall)
 
-@app.route('/approve_all', methods = ['POST'])
-def approve_all():
+#@app.route('/approve_all', methods = ['POST'])
+#def approve_all():
     # TODO change in database the status of all N -> Y using session['hall']
-    hall = session['hall']
-    table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yes'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
-    return render_template('applications.html', table = table_data_from_database, hall=hall)
+    #hall = session['hall']
+    #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yes'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
+    #return render_template('applications.html', table = table_data_from_database, hall=hall)
 
 
 if __name__ == '__main__':

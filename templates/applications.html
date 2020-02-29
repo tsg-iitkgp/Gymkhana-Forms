@@ -20,19 +20,24 @@
 	</form>
     <table style="width:100%">
 	   <tr>
+		<th>Request ID</th>
+		<th>Timestamp</th>
 		<th>Roll Number</th>
 		<th>Name</th>
-		<th>Dates</th>
-		<th>Approved Status</th>
-		<th>Approve</th>
+		<th>From Date</th>
+		<th>To Date</th>
+		<th>Approval Status</th>	
 	  </tr>
 	  {% for row in table %}
 	 	<tr>
-			 <td>{{ row['roll'] }}</td>
+			 <td>{{ row['id'] }}</td>
+			 <td>{{ row['timestamp'] }}</td>
+			 <td>{{ row['roll_number'] }}</td>
 			 <td>{{ row['name'] }}</td>
-			 <td>{{ row['dates'] }}</td>
-			 <td>{{ row['approved_status'] }}</td>
-			 <td><button onclick="handle(this.id)" id={{ row['roll'] }} >Approve</button></td>
+			 <td>{{ row['from_date'] }}</td>
+			 <td>{{ row['to_date'] }}</td>
+             <td>{{ row['approval_status']}}</td>
+			 <td><button onclick="handle(this.id)" id={{ row['roll_number'] }} >Approve</button></td>
 		 </tr> 
 	  {% endfor %}
 	</table> 
@@ -41,7 +46,7 @@
 	<script>
 		async function handle(roll) {
 			console.log('e ', roll)
-			const response = await fetch('http://1f405bf6.ngrok.io/approve',{
+			const response = await fetch('http://6d2f87cd.ngrok.io/approve',{
 								method: 'POST',
 								mode: 'cors',
 								headers: {
