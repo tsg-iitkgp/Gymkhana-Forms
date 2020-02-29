@@ -1,15 +1,39 @@
 table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
+	width: 99%;
+	border-collapse: collapse;
 }
 
-td, th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
+th {
+	font-size: large;
 }
 
-tr {
-  background-color: #dddddd;
+th, td {
+	text-align: left;
+	padding: 7px 0;
+	border-bottom: 1px solid #ddd;
+}
+
+button {
+	padding: 5px 10px;
+	font-family: Georgia, 'Times New Roman', Times, serif;
+	font-size: medium;
+	border-radius: 5px;
+}
+
+form > button {
+	cursor: pointer;
+	border-radius: 2px;
+	box-shadow: none;
+	font-size: x-large;
+	background-color: ;
+}
+
+a {
+	text-decoration: none;
+	float: right;
+	font-family: Georgia, 'Times New Roman', Times, serif;
+	font-size: xx-large;
+	margin-right: 20px;
+	background-color: lightcyan;
+	border-radius: 5px;
 }
