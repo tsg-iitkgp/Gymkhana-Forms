@@ -126,9 +126,9 @@ def erp_cred_check():
         x = cursor.fetchall()[0]
         name = x[0]
         hall = x[1]
-        timestamp = datetime.datetime.now()
-        sql = "INSERT INTO `requests` (`timestamp`,`roll_number`, `name`, `from_date`, `to_date`) VALUES"
-        values = [timestamp, roll_number, name, from_date, to_date]
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        sql = "INSERT INTO `requests` (`timestamp`,`roll_number`, `from_date`, `to_date`) VALUES (%s, %s, %s, %s)"
+        values = [timestamp, roll_number, from_date, to_date]
         val = tuple(values)
         cursor.execute(sql, val)
         db.commit()
@@ -188,7 +188,7 @@ def admin_login():
         '''
     
         hall = request.form['username']
-        hall = "LBS"
+        hall = "BRH"
 
         session['hall'] = hall
 
@@ -198,32 +198,28 @@ def admin_login():
         
         approvals = []
 
-        for row in results:
-            approval =  {}
+        for row in approvalList:
+            studRow =  {}
             approvalID = row[0]
             timestamp = row[1]
             roll_number = row[2]
             from_date = row[3]
             to_date = row[4]
             approval_status = row[5]
-
-            if checkDateInput(from_date, to_date) == 1:
-                return jsonify(message="Choose a from date atleast 2 days away")
-
-            if checkDateInput(from_date, to_date) == -1:
-                return jsonify(message="The rebate period must be atleast 5 days long")
+            name = row[7]
 
             studRow["id"] = approvalID
             studRow["timestamp"] = timestamp
             studRow["roll_number"] = roll_number
+            studRow["name"] = name
             studRow["from_date"] = from_date
             studRow["to_date"] = to_date
             studRow["approval_status"] = approval_status
             approvals.append(studRow)
 
-         
-        if request.form['username'] == 'admin' and bcrypt.check_password_hash(password_hash, request.form['password']):
-            return render_template('applications.html', table = table_data_from_database, hall=hall)
+        print(approvals) 
+        if request.form['username'] == 'admin' and request.form['password'] == "password":
+            return render_template('applications.html', table = approvals, hall=hall)
         else:
             flash('Credentials are wrong')
     return render_template('admin-login.html', form=form)
@@ -236,26 +232,24 @@ def logout():
 
 
 @app.route('/get_csv', methods = ['POST'])
-@login_required
 def get_csv():
     month = monthList[datetime.datetime.now().month]
     hall = session['hall']
+    if hall is None:
+        return redirect(url_for('admin_login')) 
     #month = "march"
     
-    sqlQuery = "SELECT * FROM requests INNER JOIN students ON requests.roll_number = students.roll_number WHERE hall = '{}'".format(hall)
+    sqlQuery = "SELECT id, timestamp,students.roll_number, name, email, hall, from_date, to_date, approval_status FROM requests INNER JOIN students ON requests.roll_number = students.roll_number WHERE hall = '{}'".format(hall)
     cursor.execute(sqlQuery)
     results = cursor.fetchall()
-    columns = tuple('id','timestamp','roll_number', 'name', 'email', 'hall', 'from_date', 'to_date')
+    columns = ('id','timestamp','roll_number', 'name', 'email', 'hall', 'from_date', 'to_date', 'approval_status')
     table_data_from_database = []
     for row in results:
         table_data_from_database.append(dict(zip(columns, row)))
 
     CSVheaders = list(columns)
-    for i in range(1, 31):
-        date = str(i) + "-" + month
-        CSVheaders.append(date)
-
-    filename = '{}_students.csv'.format(hall+"_"+month)
+   
+    filename = '{}_students.csv'.format(hall)
     return send_csv(table_data_from_database, filename, CSVheaders)
 
 
@@ -263,40 +257,31 @@ def get_csv():
 def approve():
     print('here in single approve')
     print(request.json)
-    cursor.execute("SELECT * FROM requests WHERE requests.roll_number = {} ".format(request.json['roll']))
-    stud = cursor.fetchone()
+    cursor.execute("SELECT * FROM requests WHERE requests.roll_number = '{}' ORDER BY requests.timestamp DESC ".format(request.json['roll']))
+    stud = cursor.fetchall()[0]
+
     
     # TODO with the roll number obtained change N -> Y of single row 
     # Send the page again by reading the table from DB again
-           
     hall = session['hall']
-
     stud = list(stud)
-    days = stud[1:8]
+    requestID = stud[0]
+    cursor.execute("UPDATE requests SET approval_status = 'Y' WHERE requests.id = '{}'".format(requestID))
+    print("UPDATED SUCCESSFULLY") 
+    db.commit()
+    cursor.execute("SELECT from_date, to_date FROM requests WHERE requests.id = '{}'".format(requestID))
+    res = cursor.fetchall()[0]
+    from_date = res[0]
+    to_date = res[1]
 
-    currentDay = datetime.datetime.now().weekday()
-    currentMonth = datetime.datetime.now().month
-    #currentMonth = "march"
-
-    currentDate = datetime.datetime.now().day
-
-    baseQuery = "UPDATE {} SET".format(hall+"_"+month)
-    dayQuery = ""
-    for i in range(0, len(days)):
-        if days[i] == "Y":
-            day = currentDate + i + 1
-            if day >= 30:
-                day -= 30
-                currentMonth += 1
-            colName = day + "-" + monthList[currentMonth]
-            dayQuery +=  "{} = 'Y',".format(colName)
-    
-    dayQuery = dayQuery[0:-1]
-    end = "WHERE roll_number = "
-
-
+    cursor.execute("SELECT name, email FROM students WHERE roll_number = '{}'".format(request.json['roll']))
+    x = cursor.fetchone()
+    name = x[0]
+    email = x[1]
+    body = "Hi {}! <br><br> Your Mess Rebate from {} to {} has been approved. <br><br> Thank You! <br> Technology Coordinator, TSG IITKGP".format(name, from_date, to_date)
+    async_send_mail(email, "Mess Rebate Approved", body)
     #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
-    return render_template('applications.html', table = table_data_from_database, hall=hall)
+    return render_template('applications.html', table = approvals, hall=hall)
 
 #@app.route('/approve_all', methods = ['POST'])
 #def approve_all():

@@ -5,7 +5,7 @@ import os
 
 
 @make_async
-def async_send_mail(app, to_mail, mail_subject, mail_body):
+def async_send_mail(to_mail, mail_subject, mail_body):
         send_mail(to_mail, mail_subject, mail_body)
 
 def send_mail(to_mail, mail_subject, mail_body):
