@@ -36,17 +36,20 @@
 			 <td>{{ row['name'] }}</td>
 			 <td>{{ row['from_date'] }}</td>
 			 <td>{{ row['to_date'] }}</td>
-             <td>{{ row['approval_status']}}</td>
-			 <td><button onclick="handle(this.id)" id={{ row['roll_number'] }} >Approve</button></td>
-		 </tr> 
+			 <td class={{ row['id'] }} >{{ row['approval_status']}}</td>
+			 {% if row['approval_status'] == 'N' %}
+			 	<td><button onclick="handle(this.id)" id={{ row['id'] }} >Approve</button></td>
+			 {% endif %}
+			</tr> 
 	  {% endfor %}
 	</table> 
 	
 	{% block javascript %}
 	<script>
-		async function handle(roll) {
-			console.log('e ', roll)
-			const response = await fetch('http://6d2f87cd.ngrok.io/approve',{
+		async function handle(id) {
+			console.log('e ', id)
+			try {
+				var response = await fetch('http://6d2f87cd.ngrok.io/approve',{
 								method: 'POST',
 								mode: 'cors',
 								headers: {
@@ -55,8 +58,22 @@
 									'Access-Control-Allow-Origin': '*'
 								},
 								body: JSON.stringify({ roll })
-
+								
 							})
+				let approved_student = document.getElementsByClassName(id);
+				let approved_button = document.getElementById(id)
+				approved_student[0].innerHTML = "Y";
+				approved_button.style.display = "none"
+				
+
+			} catch {
+				alert('Unable to update Database! Please Try again')
+			}
+
+			
+			
+
+
 
 		}
 	</script>
