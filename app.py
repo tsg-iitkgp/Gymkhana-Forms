@@ -15,7 +15,7 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 from mail import async_send_mail
-
+import json
 load_dotenv()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -187,8 +187,16 @@ def admin_login():
         - list of students
         '''
     
-        hall = request.form['username']
-        hall = "BRH"
+        with open('credentials.json') as json_file:
+            credentials = json.load(json_file)
+    
+        hall = request.form.get('username')
+        if hall is not None:
+            hall = hall.upper()
+
+        if request.form['password'] != credentials.get(hall):
+            flash('Credentials are wrong')
+            return render_template('admin-login.html', form=form)
 
         session['hall'] = hall
 
@@ -217,11 +225,8 @@ def admin_login():
             studRow["approval_status"] = approval_status
             approvals.append(studRow)
 
-        print(approvals) 
-        if request.form['username'] == 'admin' and request.form['password'] == "password":
-            return render_template('applications.html', table = approvals, hall=hall)
-        else:
-            flash('Credentials are wrong')
+        print(approvals)
+        return render_template('applications.html', table = approvals, hall=hall)
     return render_template('admin-login.html', form=form)
 
 @app.route("/logout")
@@ -292,4 +297,4 @@ def approve():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=6969)
