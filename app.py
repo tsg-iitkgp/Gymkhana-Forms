@@ -187,7 +187,7 @@ def admin_login():
         - hall name
         - list of students
         '''
-           with open('credentials.json') as json_file:
+        with open('credentials.json') as json_file:
             credentials = json.load(json_file)
         hall = request.form.get('username')
         if hall is not None:
