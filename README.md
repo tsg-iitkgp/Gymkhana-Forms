@@ -13,3 +13,8 @@ Setup instructions:
 
 - Start the server
 `python3 app.py`
+
+
+## Deployment
+
+The forms are hosted on our DO server in a screen session with gunicorn.
