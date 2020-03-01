@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 from mail import async_send_mail
 import json
+
 load_dotenv()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -186,17 +187,16 @@ def admin_login():
         - hall name
         - list of students
         '''
-    
-        with open('credentials.json') as json_file:
+           with open('credentials.json') as json_file:
             credentials = json.load(json_file)
-    
         hall = request.form.get('username')
         if hall is not None:
             hall = hall.upper()
-
+        
         if request.form['password'] != credentials.get(hall):
             flash('Credentials are wrong')
             return render_template('admin-login.html', form=form)
+
 
         session['hall'] = hall
 
@@ -262,7 +262,7 @@ def get_csv():
 def approve():
     print('here in single approve')
     print(request.json)
-    cursor.execute("SELECT * FROM requests WHERE requests.roll_number = '{}' ORDER BY requests.timestamp DESC ".format(request.json['roll']))
+    cursor.execute("SELECT * FROM requests WHERE requests.id = '{}' ORDER BY requests.timestamp DESC ".format(request.json['id']))
     stud = cursor.fetchall()[0]
 
     
@@ -271,6 +271,7 @@ def approve():
     hall = session['hall']
     stud = list(stud)
     requestID = stud[0]
+    rollnumber = stud[2]
     cursor.execute("UPDATE requests SET approval_status = 'Y' WHERE requests.id = '{}'".format(requestID))
     print("UPDATED SUCCESSFULLY") 
     db.commit()
@@ -279,14 +280,14 @@ def approve():
     from_date = res[0]
     to_date = res[1]
 
-    cursor.execute("SELECT name, email FROM students WHERE roll_number = '{}'".format(request.json['roll']))
+    cursor.execute("SELECT name, email FROM students WHERE roll_number = '{}'".format(rollnumber))
     x = cursor.fetchone()
     name = x[0]
     email = x[1]
     body = "Hi {}! <br><br> Your Mess Rebate from {} to {} has been approved. <br><br> Thank You! <br> Technology Coordinator, TSG IITKGP".format(name, from_date, to_date)
     async_send_mail(email, "Mess Rebate Approved", body)
     #table_data_from_database = [{'roll': '18me1234', 'name': 'kau', 'dates' : '1,3','approved_status': 'Yoooo'}, {'roll': '18ce1234', 'name': 'rkau', 'dates' : '2,3', 'approved_status': 'Yes'}]
-    return render_template('applications.html', table = approvals, hall=hall)
+    return jsonify({'msg': 'approved successfully!'})
 
 #@app.route('/approve_all', methods = ['POST'])
 #def approve_all():
